@@ -12,7 +12,6 @@ import {
 } from "@dnd-kit/core";
 import type { BoardData } from "@/lib/data/board";
 import {
-  SECTION_ORDER,
   SECTION_LABELS,
   residentFullName,
   type RoomSection,
@@ -33,6 +32,7 @@ export function Board({ data }: { data: BoardData }) {
   const editable = day.status === "draft" || day.status === "active";
 
   const [selected, setSelected] = useState<ChipModel | null>(null);
+  const [addRoomId, setAddRoomId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const sensors = useSensors(
@@ -46,9 +46,10 @@ export function Board({ data }: { data: BoardData }) {
     [residents]
   );
 
-  const { roomChips, poolChips } = useMemo(() => {
+  const { roomChips, poolChips, offChips } = useMemo(() => {
     const byRoom = new Map<string, ChipModel[]>();
     const pool: ChipModel[] = [];
+    const off: ChipModel[] = [];
 
     // Slots (attendings, CRNAs, placed residents).
     for (const s of slots) {
@@ -78,11 +79,12 @@ export function Board({ data }: { data: BoardData }) {
       }
     }
 
-    // Unplaced roster residents → pool (greyed if off/post-call).
+    // Unplaced roster residents. Assignable ones go to the Unassigned pool;
+    // those on vacation/leave ("off") or post-call go to the Off section.
     const placed = new Set(slots.filter((s) => s.resident_id).map((s) => s.resident_id));
     for (const r of residents) {
       if (placed.has(r.id)) continue;
-      pool.push({
+      const chip: ChipModel = {
         id: `res-${r.id}`,
         label: residentFullName(r),
         personType: "resident",
@@ -90,10 +92,11 @@ export function Board({ data }: { data: BoardData }) {
         fromRoomId: null,
         statusLabel: r.statusLabel,
         assignable: r.assignable,
-      });
+      };
+      (r.assignable ? pool : off).push(chip);
     }
 
-    return { roomChips: byRoom, poolChips: pool };
+    return { roomChips: byRoom, poolChips: pool, offChips: off };
   }, [slots, residents, residentStatus]);
 
   // Roster residents available to place: assignable and not already in a slot.
@@ -220,6 +223,58 @@ export function Board({ data }: { data: BoardData }) {
 
   const placing = selected !== null;
 
+  function renderSection(section: RoomSection, roomsClassName = "grid-cols-1") {
+    return (
+      <section>
+        <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          {SECTION_LABELS[section]}
+        </h2>
+        <div className={`grid gap-1 ${roomsClassName}`}>
+          {(roomsBySection.get(section) ?? []).map((room) => (
+            <Droppable
+              key={room.id}
+              id={`room-${room.id}`}
+              roomId={room.id}
+              highlight={placing}
+              onTap={() => onTapTarget(room.id)}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1"
+            >
+              {editable ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // While placing a chip, the room name acts as a drop target.
+                    if (placing) onTapTarget(room.id);
+                    else setAddRoomId(room.id);
+                  }}
+                  className="w-12 shrink-0 whitespace-nowrap text-left text-xs font-semibold text-slate-700 hover:text-slate-900"
+                >
+                  {room.label}
+                </button>
+              ) : (
+                <div className="w-12 shrink-0 whitespace-nowrap text-xs font-semibold text-slate-700">
+                  {room.label}
+                </div>
+              )}
+              <div className="flex flex-1 flex-wrap items-center gap-1">
+                {(roomChips.get(room.id) ?? []).map((chip) => (
+                  <Chip
+                    key={chip.id}
+                    chip={chip}
+                    selected={selected?.id === chip.id}
+                    draggable={editable}
+                    onSelect={() => onTapChip(chip)}
+                    onRemove={editable ? () => onRemove(chip) : undefined}
+                  />
+                ))}
+              </div>
+            </Droppable>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
       {/* Controls — hidden when the day is active (moved to bottom) */}
@@ -243,47 +298,17 @@ export function Board({ data }: { data: BoardData }) {
       )}
 
       <div className="space-y-3 p-3 pb-24">
-        {SECTION_ORDER.map((section) => (
-          <section key={section}>
-            <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              {SECTION_LABELS[section]}
-            </h2>
-            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-              {(roomsBySection.get(section) ?? []).map((room) => (
-                <Droppable
-                  key={room.id}
-                  id={`room-${room.id}`}
-                  roomId={room.id}
-                  highlight={placing}
-                  onTap={() => onTapTarget(room.id)}
-                  className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1"
-                >
-                  <div className="w-14 shrink-0 whitespace-nowrap text-xs font-semibold text-slate-700">
-                    {room.label}
-                  </div>
-                  <div className="flex flex-1 flex-wrap items-center gap-1">
-                    {(roomChips.get(room.id) ?? []).map((chip) => (
-                      <Chip
-                        key={chip.id}
-                        chip={chip}
-                        selected={selected?.id === chip.id}
-                        draggable={editable}
-                        onSelect={() => onTapChip(chip)}
-                        onRemove={editable ? () => onRemove(chip) : undefined}
-                      />
-                    ))}
-                    {editable && (
-                      <AddPersonInline
-                        residents={availableResidents}
-                        onAdd={(input) => addPerson(room.id, input)}
-                      />
-                    )}
-                  </div>
-                </Droppable>
-              ))}
-            </div>
-          </section>
-        ))}
+        {/* Left column: Main OR. Right column: SDS over Endo. */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>{renderSection("main_or")}</div>
+          <div className="space-y-3">
+            {renderSection("sds")}
+            {renderSection("endo")}
+          </div>
+        </div>
+
+        {/* Remaining rooms at the bottom. */}
+        {renderSection("special", "grid-cols-2")}
 
         {/* Unassigned pool */}
         <Droppable
@@ -312,6 +337,26 @@ export function Board({ data }: { data: BoardData }) {
             ))}
           </div>
         </Droppable>
+
+        {/* Off — residents on vacation/leave or post-call (not assignable). */}
+        {offChips.length > 0 && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Off
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {offChips.map((chip) => (
+                <Chip
+                  key={chip.id}
+                  chip={chip}
+                  selected={false}
+                  draggable={false}
+                  onSelect={undefined}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {day.status === "active" && (
@@ -322,6 +367,16 @@ export function Board({ data }: { data: BoardData }) {
           <EndDayButton dayId={day.id} />
         </div>
       )}
+
+      <AddPersonInline
+        open={addRoomId !== null}
+        roomLabel={rooms.find((r) => r.id === addRoomId)?.label ?? ""}
+        residents={availableResidents}
+        onAdd={(input) => {
+          if (addRoomId) addPerson(addRoomId, input);
+        }}
+        onClose={() => setAddRoomId(null)}
+      />
     </DndContext>
   );
 }
