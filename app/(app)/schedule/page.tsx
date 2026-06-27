@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { loadBoard } from "@/lib/data/board";
 import { Board } from "@/components/board/Board";
 import { StartDayButton } from "@/components/board/DayControls";
+import { ScanScheduleButton } from "@/components/board/ScanScheduleButton";
 import { formatLong, toISODate } from "@/lib/utils/date";
 import type { ScheduleDay } from "@/types";
 
@@ -33,6 +34,7 @@ export default async function SchedulePage() {
         <div className="flex flex-col items-center justify-center gap-4 p-10 text-center">
           <p className="text-slate-500">No schedule in progress.</p>
           <StartDayButton create />
+          <ScanScheduleButton />
         </div>
       </>
     );
