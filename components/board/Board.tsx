@@ -236,26 +236,18 @@ export function Board({ data }: { data: BoardData }) {
               id={`room-${room.id}`}
               roomId={room.id}
               highlight={placing}
-              onTap={() => onTapTarget(room.id)}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1"
+              // Tapping the row places a selected chip, or opens the add dialog.
+              onTap={() => {
+                if (placing) onTapTarget(room.id);
+                else if (editable) setAddRoomId(room.id);
+              }}
+              className={`flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 py-1 ${
+                editable ? "cursor-pointer" : ""
+              }`}
             >
-              {editable ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // While placing a chip, the room name acts as a drop target.
-                    if (placing) onTapTarget(room.id);
-                    else setAddRoomId(room.id);
-                  }}
-                  className="w-12 shrink-0 whitespace-nowrap text-left text-xs font-semibold text-slate-700 hover:text-slate-900"
-                >
-                  {room.label}
-                </button>
-              ) : (
-                <div className="w-12 shrink-0 whitespace-nowrap text-xs font-semibold text-slate-700">
-                  {room.label}
-                </div>
-              )}
+              <div className="shrink-0 whitespace-nowrap text-xs font-semibold text-slate-700">
+                {room.label}
+              </div>
               <div className="flex flex-1 flex-wrap items-center gap-1">
                 {(roomChips.get(room.id) ?? []).map((chip) => (
                   <Chip

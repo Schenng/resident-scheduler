@@ -81,7 +81,7 @@ SDS1, SDS2, SDS3, SDS4, SDS5
 Endo 1, Endo 2, Endo 3, Endo 4, Endo 5, Endo 6
 
 #### Special
-OA, OB, NITV, TEE, CT, CATH
+OA, OB, NITV, TEE, CT, CATH, A.PAIN, C.PAIN, PAT, PACU, SICU, PICU
 
 > **Note:** The "Free Doctors" section has been removed. The Unassigned pool at
 > the bottom of the board already serves as the holding area for personnel who
@@ -247,7 +247,7 @@ Seed list (Free Doctors removed):
 **main_or (sort 1–11):** OR1, OR2, OR3, OR4, OR5, OR6, OR7, OR8, OR9/10, OR11, OR12
 **sds (sort 1–5):** SDS1, SDS2, SDS3, SDS4, SDS5
 **endo (sort 1–6):** Endo 1, Endo 2, Endo 3, Endo 4, Endo 5, Endo 6
-**special (sort 1–6):** OA, OB, NITV, TEE, CT, CATH
+**special (sort 1–12):** OA, OB, NITV, TEE, CT, CATH, A.PAIN, C.PAIN, PAT, PACU, SICU, PICU
 
 ### `schedule_days`
 | Column | Type | Notes |
@@ -291,6 +291,7 @@ Seed list (Free Doctors removed):
 3. `0003_allow_multiple_days.sql` — drops `unique(date)`; drops `activity_log.changed_by` FK
 4. `0004_remove_free_doctors.sql` — moves any slots out of the Free Doctors room to the pool and deletes the room (for existing databases)
 5. `0005_split_resident_name.sql` — splits `residents.name` into `first_name` / `last_name` (for existing databases)
+6. `0006_add_special_rooms.sql` — adds A.PAIN, C.PAIN, PAT, PACU, SICU, PICU to the Special section (for existing databases)
 
 ---
 

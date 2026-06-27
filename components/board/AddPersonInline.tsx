@@ -1,11 +1,72 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PersonType } from "@/types";
 
 interface ResidentOption {
   id: string;
   name: string;
+}
+
+/** Custom dropdown that aligns with the text inputs (native <select> doesn't). */
+function ResidentSelect({
+  options,
+  value,
+  onChange,
+}: {
+  options: ResidentOption[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const selected = options.find((o) => o.id === value);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between rounded-lg border border-slate-300 px-3 py-2 text-left text-sm outline-none focus:border-slate-500"
+      >
+        <span className={selected ? "text-slate-900" : "text-slate-400"}>
+          {selected ? selected.name : "Select a resident…"}
+        </span>
+        <span className="ml-2 shrink-0 text-slate-400">▾</span>
+      </button>
+
+      {open && (
+        <ul className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+          {options.map((o) => (
+            <li key={o.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(o.id);
+                  setOpen(false);
+                }}
+                className={`block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 ${
+                  o.id === value ? "font-medium text-slate-900" : "text-slate-700"
+                }`}
+              >
+                {o.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -87,19 +148,11 @@ export function AddPersonInline({
           residents.length === 0 ? (
             <p className="text-sm text-slate-400">No available residents.</p>
           ) : (
-            <select
-              autoFocus
+            <ResidentSelect
+              options={residents}
               value={residentId}
-              onChange={(e) => setResidentId(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
-            >
-              <option value="">Select a resident…</option>
-              {residents.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
+              onChange={setResidentId}
+            />
           )
         ) : (
           <input
