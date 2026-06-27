@@ -22,12 +22,12 @@ insert into public.rooms (label, section, sort_order) values
   ('SDS4',    'sds', 4),
   ('SDS5',    'sds', 5),
   -- Endo
-  ('ENDO1',   'endo', 1),
-  ('ENDO2',   'endo', 2),
-  ('ENDO3',   'endo', 3),
-  ('ENDO4',   'endo', 4),
-  ('ENDO5',   'endo', 5),
-  ('ENDO6',   'endo', 6),
+  ('END1',    'endo', 1),
+  ('END2',    'endo', 2),
+  ('END3',    'endo', 3),
+  ('END4',    'endo', 4),
+  ('END5',    'endo', 5),
+  ('END6',    'endo', 6),
   -- Special
   ('OA',      'special', 1),
   ('OB',      'special', 2),
