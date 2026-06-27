@@ -102,6 +102,13 @@ export function Board({ data }: { data: BoardData }) {
       (r.assignable ? pool : off).push(chip);
     }
 
+    // Within each room, order by role: attending, then CRNA, then resident.
+    // Stable sort preserves slot order within a role.
+    const roleRank: Record<PersonType, number> = { attending: 0, crna: 1, resident: 2 };
+    for (const arr of byRoom.values()) {
+      arr.sort((a, b) => roleRank[a.personType] - roleRank[b.personType]);
+    }
+
     return { roomChips: byRoom, poolChips: pool, offChips: off };
   }, [slots, residents, residentStatus]);
 

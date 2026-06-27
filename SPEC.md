@@ -78,7 +78,7 @@ OR1, OR2, OR3, OR4, OR5, OR6, OR7, OR8, OR9/10, OR11, OR12
 SDS1, SDS2, SDS3, SDS4, SDS5
 
 #### Endo
-Endo 1, Endo 2, Endo 3, Endo 4, Endo 5, Endo 6
+ENDO1, ENDO2, ENDO3, ENDO4, ENDO5, ENDO6
 
 #### Special
 OA, OB, NITV, TEE, CT, CATH, A.PAIN, C.PAIN, PAT, PACU, SICU, PICU
@@ -238,7 +238,7 @@ Mirrors Supabase `auth.users` via a trigger. It was originally referenced by `ac
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid | |
-| label | text | e.g. "OR1", "SDS2", "Endo 3" |
+| label | text | e.g. "OR1", "SDS2", "ENDO3" |
 | section | enum | `main_or`, `sds`, `endo`, `special` |
 | sort_order | int | Controls display order within section |
 
@@ -246,7 +246,7 @@ Seed list (Free Doctors removed):
 
 **main_or (sort 1–11):** OR1, OR2, OR3, OR4, OR5, OR6, OR7, OR8, OR9/10, OR11, OR12
 **sds (sort 1–5):** SDS1, SDS2, SDS3, SDS4, SDS5
-**endo (sort 1–6):** Endo 1, Endo 2, Endo 3, Endo 4, Endo 5, Endo 6
+**endo (sort 1–6):** ENDO1, ENDO2, ENDO3, ENDO4, ENDO5, ENDO6
 **special (sort 1–12):** OA, OB, NITV, TEE, CT, CATH, A.PAIN, C.PAIN, PAT, PACU, SICU, PICU
 
 ### `schedule_days`
@@ -292,6 +292,7 @@ Seed list (Free Doctors removed):
 4. `0004_remove_free_doctors.sql` — moves any slots out of the Free Doctors room to the pool and deletes the room (for existing databases)
 5. `0005_split_resident_name.sql` — splits `residents.name` into `first_name` / `last_name` (for existing databases)
 6. `0006_add_special_rooms.sql` — adds A.PAIN, C.PAIN, PAT, PACU, SICU, PICU to the Special section (for existing databases)
+7. `0007_rename_endo_rooms.sql` — renames Endo rooms to all-caps, no space (e.g. "Endo 1" → "ENDO1") (for existing databases)
 
 ---
 

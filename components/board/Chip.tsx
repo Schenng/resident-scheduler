@@ -88,7 +88,7 @@ export function Chip({
             e.stopPropagation();
             onRemove();
           }}
-          className="ml-0.5 opacity-60 hover:text-red-600 hover:opacity-100"
+          className="-ml-0.5 -mr-1 text-[11px] leading-none opacity-60 hover:text-red-600 hover:opacity-100"
           aria-label="Remove"
         >
           ✕
