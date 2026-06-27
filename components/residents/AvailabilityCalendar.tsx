@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { removeAvailability } from "@/app/(app)/residents/actions";
-import { formatShort } from "@/lib/utils/date";
+import { formatShort, toISODate } from "@/lib/utils/date";
 import type { AvailabilityType, ResidentAvailability } from "@/types";
 
 const TYPE_LABELS: Record<AvailabilityType, string> = {
@@ -10,6 +10,27 @@ const TYPE_LABELS: Record<AvailabilityType, string> = {
   sick: "Sick",
   leave: "Leave",
 };
+
+// Sunday-start week key for a date.
+function weekStartISO(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() - dt.getDay());
+  return toISODate(dt);
+}
+
+function groupByWeek(
+  items: ResidentAvailability[]
+): { week: string; items: ResidentAvailability[] }[] {
+  const groups: { week: string; items: ResidentAvailability[] }[] = [];
+  for (const e of items) {
+    const wk = weekStartISO(e.date);
+    const last = groups[groups.length - 1];
+    if (last && last.week === wk) last.items.push(e);
+    else groups.push({ week: wk, items: [e] });
+  }
+  return groups;
+}
 
 export function AvailabilityCalendar({
   residentId,
@@ -40,32 +61,41 @@ export function AvailabilityCalendar({
       {entries.length === 0 ? (
         <p className="text-sm text-slate-400">No time off.</p>
       ) : (
-        <ul className="divide-y divide-slate-100 pt-1">
-          {visible.map((e) => (
-            <li key={e.id} className="flex items-center justify-between py-2 text-sm">
-              <span className="flex items-center gap-2">
-                <span className="font-medium text-slate-800">{formatShort(e.date)}</span>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                  {TYPE_LABELS[e.type]}
-                </span>
-                {conflictDates.includes(e.date) && (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
-                    overrides 24h
-                  </span>
-                )}
-                {e.note && <span className="text-slate-400">{e.note}</span>}
-              </span>
-              <button
-                onClick={() => remove(e.id, e.date, e.type)}
-                disabled={pending}
-                className="text-red-500 hover:text-red-700 disabled:opacity-50"
-                aria-label="Remove"
-              >
-                ✕
-              </button>
-            </li>
+        <div className="space-y-3">
+          {groupByWeek(visible).map((g) => (
+            <div key={g.week}>
+              <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                Week of {formatShort(g.week)}
+              </div>
+              <ul className="divide-y divide-slate-100">
+                {g.items.map((e) => (
+                  <li key={e.id} className="flex items-center justify-between py-2 text-sm">
+                    <span className="flex items-center gap-2">
+                      <span className="font-medium text-slate-800">{formatShort(e.date)}</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                        {TYPE_LABELS[e.type]}
+                      </span>
+                      {conflictDates.includes(e.date) && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                          overrides 24h
+                        </span>
+                      )}
+                      {e.note && <span className="text-slate-400">{e.note}</span>}
+                    </span>
+                    <button
+                      onClick={() => remove(e.id, e.date, e.type)}
+                      disabled={pending}
+                      className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                      aria-label="Remove"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
       {entries.length > LIMIT && (

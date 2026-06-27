@@ -30,6 +30,40 @@ function formatRange(start: string, end: string): string {
   return start === end ? formatShortDow(start) : `${formatShortDow(start)} – ${formatShortDow(end)}`;
 }
 
+// Sunday-start week key for a date.
+function weekStartISO(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() - dt.getDay());
+  return toISODate(dt);
+}
+
+// Group time off (sorted by start) into consecutive weeks (by start date).
+function groupByWeek(items: UpcomingTimeOff[]): { week: string; items: UpcomingTimeOff[] }[] {
+  const groups: { week: string; items: UpcomingTimeOff[] }[] = [];
+  for (const r of items) {
+    const wk = weekStartISO(r.start);
+    const last = groups[groups.length - 1];
+    if (last && last.week === wk) last.items.push(r);
+    else groups.push({ week: wk, items: [r] });
+  }
+  return groups;
+}
+
+// Combine residents who share the exact same date range under one heading.
+function groupByRange(
+  items: UpcomingTimeOff[]
+): { start: string; end: string; items: UpcomingTimeOff[] }[] {
+  const groups: { start: string; end: string; items: UpcomingTimeOff[] }[] = [];
+  for (const r of items) {
+    const last = groups[groups.length - 1];
+    if (last && last.start === r.start && last.end === r.end) last.items.push(r);
+    else groups.push({ start: r.start, end: r.end, items: [r] });
+  }
+  for (const g of groups) g.items.sort((a, b) => a.residentName.localeCompare(b.residentName));
+  return groups;
+}
+
 export function VacationsManager({
   residents,
   ranges,
@@ -48,7 +82,8 @@ export function VacationsManager({
   const [note, setNote] = useState("");
   const [pending, startTransition] = useTransition();
 
-  const preview = ranges.slice(0, 5);
+  const rangeGroups = groupByRange(ranges);
+  const previewGroups = rangeGroups.slice(0, 3);
 
   function add() {
     if (!residentId) return;
@@ -86,21 +121,29 @@ export function VacationsManager({
       </div>
 
       <div className="rounded-xl bg-white p-3 shadow-sm">
-        {preview.length === 0 ? (
+        {previewGroups.length === 0 ? (
           <p className="text-sm text-slate-400">No upcoming time off.</p>
         ) : (
           <>
-            <ul className="space-y-1.5">
-              {preview.map((r) => (
-                <li key={`${r.residentId}-${r.start}-${r.type}`} className="flex items-baseline gap-2 text-sm">
-                  <span className="shrink-0 font-medium text-slate-800">{formatRange(r.start, r.end)}</span>
-                  <span className="text-slate-600">{r.residentName}</span>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                    {TYPE_LABELS[r.type]}
-                  </span>
-                </li>
+            <div className="space-y-2">
+              {previewGroups.map((g) => (
+                <div key={`${g.start}-${g.end}`}>
+                  <div className="text-sm font-medium text-slate-800">
+                    {formatRange(g.start, g.end)}
+                  </div>
+                  <ul className="mt-0.5 space-y-0.5 pl-3">
+                    {g.items.map((r) => (
+                      <li key={`${r.residentId}-${r.type}`} className="flex items-baseline gap-2 text-sm">
+                        <span className="text-slate-600">{r.residentName}</span>
+                        {r.type !== "vacation" && (
+                          <span className="text-xs text-slate-400">{TYPE_LABELS[r.type]}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
             <button
               onClick={() => setShowAll(true)}
               className="mt-2 w-full rounded-lg border border-slate-200 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-50"
@@ -169,34 +212,44 @@ export function VacationsManager({
               </button>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
               {ranges.length === 0 ? (
                 <p className="text-sm text-slate-400">No upcoming time off.</p>
               ) : (
-                <ul className="divide-y divide-slate-100">
-                  {ranges.map((r) => (
-                    <li
-                      key={`${r.residentId}-${r.start}-${r.type}`}
-                      className="flex items-center justify-between py-2 text-sm"
-                    >
-                      <span className="flex flex-wrap items-baseline gap-2">
-                        <span className="font-medium text-slate-800">{formatRange(r.start, r.end)}</span>
-                        <span className="text-slate-600">{r.residentName}</span>
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                          {TYPE_LABELS[r.type]}
-                        </span>
-                      </span>
-                      <button
-                        onClick={() => remove(r)}
-                        disabled={pending}
-                        className="text-red-500 hover:text-red-700 disabled:opacity-50"
-                        aria-label="Remove"
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                groupByWeek(ranges).map((wk) => (
+                  <div key={wk.week} className="space-y-2">
+                    {groupByRange(wk.items).map((g) => (
+                      <div key={`${g.start}-${g.end}`}>
+                        <div className="text-sm font-medium text-slate-800">
+                          {formatRange(g.start, g.end)}
+                        </div>
+                        <ul className="mt-0.5 pl-3">
+                          {g.items.map((r) => (
+                            <li
+                              key={`${r.residentId}-${r.type}`}
+                              className="flex items-center justify-between py-1 text-sm"
+                            >
+                              <span className="flex items-baseline gap-2">
+                                <span className="text-slate-700">{r.residentName}</span>
+                                {r.type !== "vacation" && (
+                                  <span className="text-xs text-slate-400">{TYPE_LABELS[r.type]}</span>
+                                )}
+                              </span>
+                              <button
+                                onClick={() => remove(r)}
+                                disabled={pending}
+                                className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                                aria-label="Remove"
+                              >
+                                ✕
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ))
               )}
             </div>
           </div>
@@ -218,26 +271,34 @@ export function VacationsManager({
                 ✕
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
               {ranges.length === 0 ? (
                 <p className="text-sm text-slate-400">No upcoming time off.</p>
               ) : (
-                <ul className="divide-y divide-slate-100">
-                  {ranges.map((r) => (
-                    <li
-                      key={`${r.residentId}-${r.start}-${r.type}`}
-                      className="flex flex-wrap items-baseline gap-2 py-2 text-sm"
-                    >
-                      <span className="shrink-0 font-medium text-slate-800">
-                        {formatRange(r.start, r.end)}
-                      </span>
-                      <span className="text-slate-600">{r.residentName}</span>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                        {TYPE_LABELS[r.type]}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                groupByWeek(ranges).map((wk) => (
+                  <div key={wk.week} className="space-y-2">
+                    {groupByRange(wk.items).map((g) => (
+                      <div key={`${g.start}-${g.end}`}>
+                        <div className="text-sm font-medium text-slate-800">
+                          {formatRange(g.start, g.end)}
+                        </div>
+                        <ul className="mt-0.5 pl-3">
+                          {g.items.map((r) => (
+                            <li
+                              key={`${r.residentId}-${r.type}`}
+                              className="flex items-baseline gap-2 py-1 text-sm"
+                            >
+                              <span className="text-slate-700">{r.residentName}</span>
+                              {r.type !== "vacation" && (
+                                <span className="text-xs text-slate-400">{TYPE_LABELS[r.type]}</span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ))
               )}
             </div>
           </div>

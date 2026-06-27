@@ -40,6 +40,26 @@ function groupByWeek(items: UpcomingShift[]): { week: string; items: UpcomingShi
   return groups;
 }
 
+const CALL_RANK: Record<CallType, number> = {
+  call_1: 0,
+  call_2: 1,
+  call_3: 2,
+  call_4: 3,
+  ob: 4,
+};
+
+// Group shifts (sorted by date) by day; residents within a day ordered by call.
+function groupByDay(items: UpcomingShift[]): { date: string; items: UpcomingShift[] }[] {
+  const groups: { date: string; items: UpcomingShift[] }[] = [];
+  for (const s of items) {
+    const last = groups[groups.length - 1];
+    if (last && last.date === s.date) last.items.push(s);
+    else groups.push({ date: s.date, items: [s] });
+  }
+  for (const g of groups) g.items.sort((a, b) => CALL_RANK[a.callType] - CALL_RANK[b.callType]);
+  return groups;
+}
+
 export function ShiftsManager({
   residents,
   shifts,
@@ -55,7 +75,8 @@ export function ShiftsManager({
   const [callType, setCallType] = useState<CallType>("call_1");
   const [pending, startTransition] = useTransition();
 
-  const preview = shifts.slice(0, 5);
+  const dayGroups = groupByDay(shifts);
+  const previewDays = dayGroups.slice(0, 3);
 
   function add() {
     if (!residentId) return;
@@ -90,21 +111,27 @@ export function ShiftsManager({
       </div>
 
       <div className="rounded-xl bg-white p-3 shadow-sm">
-        {preview.length === 0 ? (
+        {previewDays.length === 0 ? (
           <p className="text-sm text-slate-400">No upcoming shifts.</p>
         ) : (
           <>
-            <ul className="space-y-1.5">
-              {preview.map((s) => (
-                <li key={s.id} className="flex items-baseline gap-2 text-sm">
-                  <span className="shrink-0 font-medium text-slate-800">{formatShortDow(s.date)}</span>
-                  <span className="text-slate-600">{s.residentName}</span>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                    {CALL_TYPE_LABELS[s.callType]}
-                  </span>
-                </li>
+            <div className="space-y-2">
+              {previewDays.map((g) => (
+                <div key={g.date}>
+                  <div className="text-sm font-medium text-slate-800">{formatShortDow(g.date)}</div>
+                  <ul className="mt-0.5 space-y-0.5 pl-3">
+                    {g.items.map((s) => (
+                      <li key={s.id} className="flex items-baseline gap-2 text-sm">
+                        <span className="w-12 shrink-0 text-xs text-slate-400">
+                          {CALL_TYPE_LABELS[s.callType]}
+                        </span>
+                        <span className="text-slate-600">{s.residentName}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
             <button
               onClick={() => setShowAll(true)}
               className="mt-2 w-full rounded-lg border border-slate-200 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-50"
@@ -162,35 +189,44 @@ export function ShiftsManager({
               {shifts.length === 0 ? (
                 <p className="text-sm text-slate-400">No upcoming shifts.</p>
               ) : (
-                groupByWeek(shifts).map((g) => (
-                  <div key={g.week}>
-                    <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                      Week of {formatShort(g.week)}
+                groupByWeek(shifts).map((wk) => (
+                  <div key={wk.week} className="space-y-2">
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                      Week of {formatShort(wk.week)}
                     </div>
-                    <ul className="divide-y divide-slate-100">
-                      {g.items.map((s) => (
-                        <li key={s.id} className="flex items-center justify-between py-2 text-sm">
-                          <span className="flex flex-wrap items-baseline gap-2">
-                            <span className="font-medium text-slate-800">{formatShortDow(s.date)}</span>
-                            <span className="text-slate-600">{s.residentName}</span>
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                              {CALL_TYPE_LABELS[s.callType]}
-                            </span>
-                            <span className="text-xs text-slate-400">
-                              pre {formatShort(addDays(s.date, -1))} · post {formatShort(addDays(s.date, 1))}
-                            </span>
+                    {groupByDay(wk.items).map((g) => (
+                      <div key={g.date}>
+                        <div className="text-sm font-medium text-slate-800">
+                          {formatShortDow(g.date)}
+                          <span className="ml-2 text-xs font-normal text-slate-400">
+                            pre {formatShort(addDays(g.date, -1))} · post {formatShort(addDays(g.date, 1))}
                           </span>
-                          <button
-                            onClick={() => remove(s)}
-                            disabled={pending}
-                            className="text-red-500 hover:text-red-700 disabled:opacity-50"
-                            aria-label="Remove"
-                          >
-                            ✕
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                        </div>
+                        <ul className="mt-0.5 pl-3">
+                          {g.items.map((s) => (
+                            <li
+                              key={s.id}
+                              className="flex items-center justify-between py-1 text-sm"
+                            >
+                              <span className="flex items-baseline gap-2">
+                                <span className="w-12 shrink-0 text-xs text-slate-400">
+                                  {CALL_TYPE_LABELS[s.callType]}
+                                </span>
+                                <span className="text-slate-700">{s.residentName}</span>
+                              </span>
+                              <button
+                                onClick={() => remove(s)}
+                                disabled={pending}
+                                className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                                aria-label="Remove"
+                              >
+                                ✕
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
                   </div>
                 ))
               )}
@@ -218,25 +254,31 @@ export function ShiftsManager({
               {shifts.length === 0 ? (
                 <p className="text-sm text-slate-400">No upcoming shifts.</p>
               ) : (
-                groupByWeek(shifts).map((g) => (
-                  <div key={g.week}>
-                    <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                      Week of {formatShort(g.week)}
+                groupByWeek(shifts).map((wk) => (
+                  <div key={wk.week} className="space-y-2">
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                      Week of {formatShort(wk.week)}
                     </div>
-                    <ul className="divide-y divide-slate-100">
-                      {g.items.map((s) => (
-                        <li key={s.id} className="flex flex-wrap items-baseline gap-2 py-2 text-sm">
-                          <span className="shrink-0 font-medium text-slate-800">{formatShortDow(s.date)}</span>
-                          <span className="text-slate-600">{s.residentName}</span>
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                            {CALL_TYPE_LABELS[s.callType]}
+                    {groupByDay(wk.items).map((g) => (
+                      <div key={g.date}>
+                        <div className="text-sm font-medium text-slate-800">
+                          {formatShortDow(g.date)}
+                          <span className="ml-2 text-xs font-normal text-slate-400">
+                            pre {formatShort(addDays(g.date, -1))} · post {formatShort(addDays(g.date, 1))}
                           </span>
-                          <span className="text-xs text-slate-400">
-                            pre {formatShort(addDays(s.date, -1))} · post {formatShort(addDays(s.date, 1))}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
+                        </div>
+                        <ul className="mt-0.5 pl-3">
+                          {g.items.map((s) => (
+                            <li key={s.id} className="flex items-baseline gap-2 py-1 text-sm">
+                              <span className="w-12 shrink-0 text-xs text-slate-400">
+                                {CALL_TYPE_LABELS[s.callType]}
+                              </span>
+                              <span className="text-slate-700">{s.residentName}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
                   </div>
                 ))
               )}
