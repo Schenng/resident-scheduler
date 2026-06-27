@@ -36,12 +36,16 @@ export function Chip({
   draggable,
   onSelect,
   onRemove,
+  dimmed,
 }: {
   chip: ChipModel;
   selected: boolean;
   draggable: boolean;
   onSelect?: () => void;
   onRemove?: () => void;
+  // When omitted, non-assignable chips render greyed. Pass false to keep the
+  // normal role color while still being non-interactive.
+  dimmed?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: chip.id,
@@ -49,11 +53,12 @@ export function Chip({
     disabled: !draggable || !chip.assignable,
   });
 
+  const isDimmed = dimmed ?? !chip.assignable;
   const base =
     "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium select-none";
-  const tone = chip.assignable
-    ? TYPE_CLASSES[chip.personType]
-    : "bg-slate-100 text-slate-400 border-slate-200";
+  const tone = isDimmed
+    ? "bg-slate-100 text-slate-400 border-slate-200"
+    : TYPE_CLASSES[chip.personType];
   const ring = selected ? "ring-2 ring-offset-1 ring-slate-800" : "";
   const drag = isDragging ? "opacity-40" : "";
 

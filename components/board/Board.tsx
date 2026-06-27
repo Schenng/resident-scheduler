@@ -478,11 +478,11 @@ export function Board({ data }: { data: BoardData }) {
           </div>
         </Droppable>
 
-        {/* Off — residents on vacation/leave or post-call (not assignable). */}
+        {/* Vacation/Post call — residents on vacation/leave or post-call (not assignable). */}
         {offChips.length > 0 && (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div className="rounded-xl border-2 border-dashed border-slate-300 bg-white p-3">
             <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Off
+              Vacation/Post call
             </div>
             <div className="flex flex-wrap gap-1.5">
               {offChips.map((chip) => (
@@ -492,6 +492,7 @@ export function Board({ data }: { data: BoardData }) {
                   selected={false}
                   draggable={false}
                   onSelect={undefined}
+                  dimmed
                 />
               ))}
             </div>

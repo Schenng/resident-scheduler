@@ -18,7 +18,7 @@ export default async function PreviousPage() {
 
   return (
     <>
-      <AppHeader title="Previous Schedules" subtitle={`${days.length} archived`} />
+      <AppHeader title="History" subtitle={`${days.length} archived`} />
       <div className="p-4">
         {days.length === 0 ? (
           <p className="rounded-lg bg-white p-4 text-sm text-slate-500">
