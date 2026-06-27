@@ -7,6 +7,15 @@ export type RoomSection = "main_or" | "sds" | "endo" | "special";
 export type DayStatus = "draft" | "active" | "archived";
 export type PersonType = "attending" | "resident" | "crna";
 export type ActionType = "move" | "add" | "remove" | "swap";
+export type CallType = "call_1" | "call_2" | "call_3" | "call_4" | "ob";
+
+export const CALL_TYPE_LABELS: Record<CallType, string> = {
+  call_1: "Call 1",
+  call_2: "Call 2",
+  call_3: "Call 3",
+  call_4: "Call 4",
+  ob: "OB",
+};
 
 // Derived resident status for a given date.
 export type ResidentStatus = "on" | "pre_call" | "24hr" | "post_call" | "off";
@@ -47,6 +56,7 @@ export interface Resident24hr {
   id: string;
   resident_id: string;
   date: string;
+  call_type: CallType;
 }
 
 export interface ResidentRotation {

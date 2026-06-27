@@ -2,37 +2,107 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/ui/AppHeader";
 import { AddResidentForm } from "@/components/residents/AddResidentForm";
-import { residentFullName, type Resident } from "@/types";
+import { ShiftsManager, type UpcomingShift } from "@/components/residents/ShiftsManager";
+import {
+  VacationsManager,
+  type UpcomingTimeOff,
+} from "@/components/residents/VacationsManager";
+import { toISODate, addDays } from "@/lib/utils/date";
+import {
+  residentFullName,
+  type Resident,
+  type Resident24hr,
+  type ResidentAvailability,
+} from "@/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function ResidentsPage() {
   const supabase = createClient();
-  const { data } = await supabase
-    .from("residents")
-    .select("*")
-    .order("active", { ascending: false })
-    .order("last_name", { ascending: true })
-    .order("first_name", { ascending: true });
+  const today = toISODate();
+
+  const [{ data }, { data: shiftData }, { data: availData }] = await Promise.all([
+    supabase
+      .from("residents")
+      .select("*")
+      .order("active", { ascending: false })
+      .order("last_name", { ascending: true })
+      .order("first_name", { ascending: true }),
+    supabase.from("resident_24hr").select("*").gte("date", today).order("date"),
+    supabase
+      .from("resident_availability")
+      .select("*")
+      .gte("date", today)
+      .order("resident_id")
+      .order("date"),
+  ]);
 
   const residents = (data ?? []) as Resident[];
   const activeResidents = residents.filter((r) => r.active);
   const inactiveResidents = residents.filter((r) => !r.active);
+
+  // Name lookup (covers inactive residents too) and dropdown options (active only).
+  const nameById = new Map(residents.map((r) => [r.id, residentFullName(r)]));
+  const residentOptions = activeResidents.map((r) => ({ id: r.id, name: residentFullName(r) }));
+
+  const upcomingShifts: UpcomingShift[] = ((shiftData ?? []) as Resident24hr[]).map((s) => ({
+    id: s.id,
+    residentId: s.resident_id,
+    residentName: nameById.get(s.resident_id) ?? "—",
+    date: s.date,
+    callType: s.call_type,
+  }));
+
+  // Collapse per-day availability rows into contiguous ranges (per resident + type).
+  const availRows = ((availData ?? []) as ResidentAvailability[])
+    .slice()
+    .sort((a, b) =>
+      a.resident_id !== b.resident_id
+        ? a.resident_id.localeCompare(b.resident_id)
+        : a.type !== b.type
+          ? a.type.localeCompare(b.type)
+          : a.date.localeCompare(b.date)
+    );
+  const ranges: UpcomingTimeOff[] = [];
+  for (const row of availRows) {
+    const last = ranges[ranges.length - 1];
+    if (
+      last &&
+      last.residentId === row.resident_id &&
+      last.type === row.type &&
+      addDays(last.end, 1) === row.date
+    ) {
+      last.end = row.date;
+    } else {
+      ranges.push({
+        residentId: row.resident_id,
+        residentName: nameById.get(row.resident_id) ?? "—",
+        type: row.type,
+        start: row.date,
+        end: row.date,
+      });
+    }
+  }
+  ranges.sort((a, b) => a.start.localeCompare(b.start));
 
   return (
     <>
       <AppHeader title="Resident Hub" subtitle={`${activeResidents.length} active`} />
 
       <div className="space-y-6 p-4">
-        <AddResidentForm />
+        <ShiftsManager residents={residentOptions} shifts={upcomingShifts} />
+        <VacationsManager residents={residentOptions} ranges={ranges} />
 
         <section>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Roster
-          </h2>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Residents
+            </h2>
+            <AddResidentForm />
+          </div>
           {activeResidents.length === 0 ? (
             <p className="rounded-lg bg-white p-4 text-sm text-slate-500">
-              No residents yet. Add one above.
+              No residents yet.
             </p>
           ) : (
             <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white shadow-sm">

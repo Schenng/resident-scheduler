@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/ui/AppHeader";
+import { DeleteDayButton } from "@/components/previous/DeleteDayButton";
 import { formatLong } from "@/lib/utils/date";
 import type { ScheduleDay } from "@/types";
 
@@ -27,10 +28,10 @@ export default async function PreviousPage() {
         ) : (
           <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white shadow-sm">
             {days.map((d) => (
-              <li key={d.id}>
+              <li key={d.id} className="flex items-center transition hover:bg-slate-50">
                 <Link
                   href={`/previous/${d.id}`}
-                  className="flex items-center justify-between px-4 py-3 transition hover:bg-slate-50"
+                  className="flex flex-1 items-center justify-between px-4 py-3"
                 >
                   <span>
                     <span className="font-medium text-slate-900">{formatLong(d.date)}</span>
@@ -46,6 +47,7 @@ export default async function PreviousPage() {
                   </span>
                   <span className="text-slate-300">›</span>
                 </Link>
+                <DeleteDayButton id={d.id} label={formatLong(d.date)} />
               </li>
             ))}
           </ul>

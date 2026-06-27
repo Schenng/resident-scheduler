@@ -41,3 +41,13 @@ export function formatShort(iso: string): string {
     day: "numeric",
   });
 }
+
+/** Short date with weekday, e.g. "Mon, Jun 29". */
+export function formatShortDow(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}

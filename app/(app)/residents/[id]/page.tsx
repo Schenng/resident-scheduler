@@ -111,13 +111,13 @@ export default async function ResidentDetailPage({
           </div>
         )}
 
+        <ShiftCalendar residentId={r.id} entries={shiftRows} conflictDates={conflicts} />
+
         <AvailabilityCalendar
           residentId={r.id}
           entries={avail}
           conflictDates={conflicts}
         />
-
-        <ShiftCalendar residentId={r.id} entries={shiftRows} conflictDates={conflicts} />
 
         <RotationList residentId={r.id} entries={rotationRows} />
 

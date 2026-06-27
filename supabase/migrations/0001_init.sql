@@ -9,6 +9,7 @@ create type room_section      as enum ('main_or', 'sds', 'endo', 'special', 'fre
 create type day_status        as enum ('draft', 'active', 'archived');
 create type person_type       as enum ('attending', 'resident', 'crna');
 create type action_type       as enum ('move', 'add', 'remove', 'swap');
+create type call_type         as enum ('call_1', 'call_2', 'call_3', 'call_4', 'ob');
 
 -- ---------- users ----------------------------------------------------------
 -- All authenticated users are chiefs with full access. Mirrors auth.users.
@@ -61,6 +62,7 @@ create table public.resident_24hr (
   id          uuid primary key default gen_random_uuid(),
   resident_id uuid not null references public.residents (id) on delete cascade,
   date        date not null,
+  call_type   call_type not null default 'call_1',
   unique (resident_id, date)
 );
 create index resident_24hr_resident_date_idx

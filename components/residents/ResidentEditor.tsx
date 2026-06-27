@@ -2,8 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { updateResident, setResidentActive } from "@/app/(app)/residents/actions";
+import { updateResident, setResidentActive, deleteResident } from "@/app/(app)/residents/actions";
+import { ResidentSelect } from "@/components/ui/ResidentSelect";
 import { residentFullName, type Resident } from "@/types";
+
+const LEVEL_OPTIONS = ["PGY-1", "PGY-2", "PGY-3", "PGY-4"].map((l) => ({ id: l, name: l }));
 
 export function ResidentEditor({ resident }: { resident: Resident }) {
   const router = useRouter();
@@ -31,6 +34,20 @@ export function ResidentEditor({ resident }: { resident: Resident }) {
     });
   }
 
+  function remove() {
+    if (
+      !confirm(
+        `Delete ${residentFullName(resident)}? This permanently removes them and all their vacation and 24-hour shift records.`
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      await deleteResident(resident.id);
+      router.push("/residents");
+    });
+  }
+
   if (!editing) {
     return (
       <div className="flex items-center justify-between rounded-xl bg-white p-4 shadow-sm">
@@ -51,9 +68,16 @@ export function ResidentEditor({ resident }: { resident: Resident }) {
           <button
             onClick={toggleActive}
             disabled={pending}
-            className={resident.active ? "text-red-500 hover:text-red-700" : "text-green-600 hover:text-green-800"}
+            className={resident.active ? "text-amber-600 hover:text-amber-700" : "text-green-600 hover:text-green-800"}
           >
             {resident.active ? "Deactivate" : "Reactivate"}
+          </button>
+          <button
+            onClick={remove}
+            disabled={pending}
+            className="text-red-500 hover:text-red-700 disabled:opacity-50"
+          >
+            Delete
           </button>
         </div>
       </div>
@@ -74,11 +98,11 @@ export function ResidentEditor({ resident }: { resident: Resident }) {
         placeholder="Last name"
         className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
       />
-      <input
+      <ResidentSelect
+        options={LEVEL_OPTIONS}
         value={level}
-        onChange={(e) => setLevel(e.target.value)}
+        onChange={setLevel}
         placeholder="Level"
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
       />
       <div className="flex gap-2">
         <button
