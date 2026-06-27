@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -23,12 +24,17 @@ import { AddPersonInline } from "./AddPersonInline";
 import { StartDayButton, EndDayButton } from "./DayControls";
 import { ActivityLog } from "@/components/log/ActivityLog";
 import { addSlot, moveSlot, removeSlot } from "@/app/(app)/schedule/actions";
+import { formatLong } from "@/lib/utils/date";
 
 const POOL_DROP_ID = "pool";
 
+function formatLogTime(ts: string): string {
+  return new Date(ts).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
 export function Board({ data }: { data: BoardData }) {
   const router = useRouter();
-  const { day, rooms, slots, residents } = data;
+  const { day, rooms, slots, residents, recentLog } = data;
   const editable = day.status === "draft" || day.status === "active";
 
   const [selected, setSelected] = useState<ChipModel | null>(null);
@@ -223,6 +229,122 @@ export function Board({ data }: { data: BoardData }) {
 
   const placing = selected !== null;
 
+  // Render the current schedule to a PNG and download it. Drawn from board data
+  // (not the DOM) so it works without any image-capture dependency.
+  function shareSchedule() {
+    const width = 760;
+    const scale = 2;
+    const padX = 28;
+    const padY = 28;
+    const lineH = 22;
+    const titleH = 26;
+    const sectionGap = 16;
+    const labelCol = 70;
+    const contentW = width - padX * 2;
+
+    const headerFont = "bold 18px system-ui, -apple-system, sans-serif";
+    const titleFont = "bold 12px system-ui, -apple-system, sans-serif";
+    const labelFont = "bold 14px system-ui, -apple-system, sans-serif";
+    const bodyFont = "14px system-ui, -apple-system, sans-serif";
+
+    function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+      ctx.font = bodyFont;
+      const words = text.split(" ");
+      const lines: string[] = [];
+      let cur = "";
+      for (const w of words) {
+        const test = cur ? `${cur} ${w}` : w;
+        if (cur && ctx.measureText(test).width > maxWidth) {
+          lines.push(cur);
+          cur = w;
+        } else {
+          cur = test;
+        }
+      }
+      if (cur) lines.push(cur);
+      return lines.length ? lines : ["—"];
+    }
+
+    const groups: { title: string; rooms: { label: string; people: string }[] }[] = [];
+    for (const section of ["main_or", "sds", "endo", "special"] as RoomSection[]) {
+      const rooms = roomsBySection.get(section) ?? [];
+      if (rooms.length === 0) continue;
+      groups.push({
+        title: SECTION_LABELS[section],
+        rooms: rooms.map((r) => ({
+          label: r.label,
+          people: (roomChips.get(r.id) ?? []).map((c) => c.label).join(", ") || "—",
+        })),
+      });
+    }
+    if (poolChips.length > 0) {
+      groups.push({
+        title: "Unassigned",
+        rooms: [{ label: "", people: poolChips.map((c) => c.label).join(", ") }],
+      });
+    }
+
+    function layout(ctx: CanvasRenderingContext2D, draw: boolean): number {
+      let y = padY;
+      if (draw) {
+        ctx.textBaseline = "top";
+        ctx.fillStyle = "#0f172a";
+        ctx.font = headerFont;
+        ctx.fillText(`OR Schedule — ${formatLong(day.date)}`, padX, y);
+      }
+      y += 34;
+
+      for (const g of groups) {
+        if (draw) {
+          ctx.fillStyle = "#94a3b8";
+          ctx.font = titleFont;
+          ctx.fillText(g.title.toUpperCase(), padX, y);
+        }
+        y += titleH;
+        for (const room of g.rooms) {
+          const lines = wrap(ctx, room.people, contentW - labelCol);
+          if (draw) {
+            if (room.label) {
+              ctx.fillStyle = "#334155";
+              ctx.font = labelFont;
+              ctx.fillText(room.label, padX, y);
+            }
+            ctx.fillStyle = "#475569";
+            ctx.font = bodyFont;
+            lines.forEach((ln, i) => ctx.fillText(ln, padX + labelCol, y + i * lineH));
+          }
+          y += lines.length * lineH;
+        }
+        y += sectionGap;
+      }
+      return y + padY;
+    }
+
+    const measureCtx = document.createElement("canvas").getContext("2d");
+    if (!measureCtx) return;
+    const height = layout(measureCtx, false);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(scale, scale);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    layout(ctx, true);
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `schedule-${day.date}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, "image/png");
+  }
+
   function renderSection(section: RoomSection, roomsClassName = "grid-cols-1") {
     return (
       <section>
@@ -349,12 +471,52 @@ export function Board({ data }: { data: BoardData }) {
             </div>
           </div>
         )}
+
+        {/* Recent Log — the last five changes; tap to open the full day log. */}
+        {recentLog.length > 0 && (
+          <Link
+            href={`/schedule/log/${day.id}`}
+            className="block rounded-xl border border-slate-200 bg-white p-3 transition hover:bg-slate-50"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Recent Log
+              </span>
+              <span className="text-slate-300">›</span>
+            </div>
+            <ul className="space-y-1.5">
+              {recentLog.map((e) => (
+                <li key={e.id} className="flex items-baseline gap-2 text-sm">
+                  <span className="shrink-0 text-slate-400">{formatLogTime(e.timestamp)}</span>
+                  <span>
+                    <span className="font-medium text-slate-900">{e.person_name}</span>
+                    {e.from_room && (
+                      <>
+                        <span className="text-slate-400"> · </span>
+                        <span className="text-slate-600">{e.from_room}</span>
+                      </>
+                    )}
+                    <span className="text-slate-400"> → </span>
+                    <span className="text-slate-600">{e.to_room}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Link>
+        )}
       </div>
 
       {day.status === "active" && (
         <div className="sticky bottom-0 z-10 flex items-center gap-2 border-t border-slate-200 bg-slate-50/90 px-4 py-2 backdrop-blur">
           <ActivityLog dayId={day.id} />
           {pending && <span className="text-xs text-slate-400">saving…</span>}
+          <div className="flex-1" />
+          <button
+            onClick={shareSchedule}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          >
+            Share
+          </button>
           <div className="flex-1" />
           <EndDayButton dayId={day.id} />
         </div>
