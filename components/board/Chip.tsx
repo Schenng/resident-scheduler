@@ -22,6 +22,14 @@ const TYPE_CLASSES: Record<PersonType, string> = {
   crna: "bg-amber-100 text-amber-800 border-amber-300",
 };
 
+// Residents are shown by the first four letters of their last name. The full
+// name ("Last, First") is still stored and used everywhere else.
+function displayName(chip: ChipModel): string {
+  if (chip.personType !== "resident") return chip.label;
+  const lastName = chip.label.split(",")[0].trim();
+  return lastName.slice(0, 4);
+}
+
 export function Chip({
   chip,
   selected,
@@ -42,7 +50,7 @@ export function Chip({
   });
 
   const base =
-    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm font-medium select-none";
+    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium select-none";
   const tone = chip.assignable
     ? TYPE_CLASSES[chip.personType]
     : "bg-slate-100 text-slate-400 border-slate-200";
@@ -68,7 +76,7 @@ export function Chip({
         chip.assignable ? "cursor-pointer touch-none" : "cursor-default"
       }`}
     >
-      <span>{chip.label}</span>
+      <span title={chip.label}>{displayName(chip)}</span>
       {chip.statusLabel && (
         <span className="rounded bg-black/5 px-1 text-[10px] uppercase tracking-wide">
           {chip.statusLabel}

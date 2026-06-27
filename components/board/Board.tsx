@@ -11,7 +11,13 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import type { BoardData } from "@/lib/data/board";
-import { SECTION_ORDER, SECTION_LABELS, type RoomSection, type PersonType } from "@/types";
+import {
+  SECTION_ORDER,
+  SECTION_LABELS,
+  residentFullName,
+  type RoomSection,
+  type PersonType,
+} from "@/types";
 import { Chip, type ChipModel } from "./Chip";
 import { Droppable } from "./Droppable";
 import { AddPersonInline } from "./AddPersonInline";
@@ -78,7 +84,7 @@ export function Board({ data }: { data: BoardData }) {
       if (placed.has(r.id)) continue;
       pool.push({
         id: `res-${r.id}`,
-        label: r.name,
+        label: residentFullName(r),
         personType: "resident",
         residentId: r.id,
         fromRoomId: null,
@@ -89,6 +95,14 @@ export function Board({ data }: { data: BoardData }) {
 
     return { roomChips: byRoom, poolChips: pool };
   }, [slots, residents, residentStatus]);
+
+  // Roster residents available to place: assignable and not already in a slot.
+  const availableResidents = useMemo(() => {
+    const placed = new Set(slots.filter((s) => s.resident_id).map((s) => s.resident_id));
+    return residents
+      .filter((r) => r.assignable && !placed.has(r.id))
+      .map((r) => ({ id: r.id, name: residentFullName(r) }));
+  }, [slots, residents]);
 
   // ---- Placement logic ----------------------------------------------------
   function place(sel: ChipModel, targetRoomId: string | null) {
@@ -176,13 +190,17 @@ export function Board({ data }: { data: BoardData }) {
     setSelected(null);
   }
 
-  function addPerson(roomId: string | null, name: string, type: PersonType) {
+  function addPerson(
+    roomId: string | null,
+    input: { type: PersonType; name: string; residentId?: string }
+  ) {
     startTransition(async () => {
       await addSlot({
         dayId: day.id,
         roomId,
-        personName: name,
-        personType: type,
+        personName: input.name,
+        personType: input.type,
+        residentId: input.residentId ?? null,
         dayStatus: day.status,
       });
       router.refresh();
@@ -204,23 +222,18 @@ export function Board({ data }: { data: BoardData }) {
 
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      {/* Controls */}
-      <div className="sticky top-[57px] z-10 flex items-center gap-2 border-b border-slate-200 bg-slate-50/90 px-4 py-2 backdrop-blur">
-        {day.status === "draft" && <StartDayButton dayId={day.id} />}
-        {day.status === "active" && (
-          <>
-            <ActivityLog dayId={day.id} />
-            <div className="flex-1" />
-            <EndDayButton dayId={day.id} />
-          </>
-        )}
-        {day.status === "archived" && (
-          <p className="text-sm text-slate-500">
-            This day is archived (read-only). Create a new draft tomorrow.
-          </p>
-        )}
-        {pending && <span className="text-xs text-slate-400">saving…</span>}
-      </div>
+      {/* Controls — hidden when the day is active (moved to bottom) */}
+      {day.status !== "active" && (
+        <div className="sticky top-[57px] z-10 flex items-center gap-2 border-b border-slate-200 bg-slate-50/90 px-4 py-2 backdrop-blur">
+          {day.status === "draft" && <StartDayButton dayId={day.id} />}
+          {day.status === "archived" && (
+            <p className="text-sm text-slate-500">
+              This day is archived (read-only). Create a new draft tomorrow.
+            </p>
+          )}
+          {pending && <span className="text-xs text-slate-400">saving…</span>}
+        </div>
+      )}
 
       {placing && (
         <div className="px-4 pt-3 text-sm text-slate-500">
@@ -229,13 +242,13 @@ export function Board({ data }: { data: BoardData }) {
         </div>
       )}
 
-      <div className="space-y-6 p-4 pb-24">
-        {SECTION_ORDER.filter((s) => s !== "free_doctors").map((section) => (
+      <div className="space-y-3 p-3 pb-24">
+        {SECTION_ORDER.map((section) => (
           <section key={section}>
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
               {SECTION_LABELS[section]}
             </h2>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
               {(roomsBySection.get(section) ?? []).map((room) => (
                 <Droppable
                   key={room.id}
@@ -243,10 +256,12 @@ export function Board({ data }: { data: BoardData }) {
                   roomId={room.id}
                   highlight={placing}
                   onTap={() => onTapTarget(room.id)}
-                  className="rounded-xl border border-slate-200 bg-white p-3"
+                  className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1"
                 >
-                  <div className="mb-2 text-sm font-semibold text-slate-700">{room.label}</div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="w-14 shrink-0 whitespace-nowrap text-xs font-semibold text-slate-700">
+                    {room.label}
+                  </div>
+                  <div className="flex flex-1 flex-wrap items-center gap-1">
                     {(roomChips.get(room.id) ?? []).map((chip) => (
                       <Chip
                         key={chip.id}
@@ -258,7 +273,10 @@ export function Board({ data }: { data: BoardData }) {
                       />
                     ))}
                     {editable && (
-                      <AddPersonInline onAdd={(name, type) => addPerson(room.id, name, type)} />
+                      <AddPersonInline
+                        residents={availableResidents}
+                        onAdd={(input) => addPerson(room.id, input)}
+                      />
                     )}
                   </div>
                 </Droppable>
@@ -267,35 +285,7 @@ export function Board({ data }: { data: BoardData }) {
           </section>
         ))}
 
-        {/* Free Doctors + Unassigned pool */}
-        {(roomsBySection.get("free_doctors") ?? []).map((room) => (
-          <Droppable
-            key={room.id}
-            id={`room-${room.id}`}
-            roomId={room.id}
-            highlight={placing}
-            onTap={() => onTapTarget(room.id)}
-            className="rounded-xl border border-purple-200 bg-purple-50 p-3"
-          >
-            <div className="mb-2 text-sm font-semibold text-purple-800">{room.label}</div>
-            <div className="flex flex-wrap gap-1.5">
-              {(roomChips.get(room.id) ?? []).map((chip) => (
-                <Chip
-                  key={chip.id}
-                  chip={chip}
-                  selected={selected?.id === chip.id}
-                  draggable={editable}
-                  onSelect={() => onTapChip(chip)}
-                  onRemove={editable ? () => onRemove(chip) : undefined}
-                />
-              ))}
-              {editable && (
-                <AddPersonInline onAdd={(name, type) => addPerson(room.id, name, type)} />
-              )}
-            </div>
-          </Droppable>
-        ))}
-
+        {/* Unassigned pool */}
         <Droppable
           id={POOL_DROP_ID}
           roomId={null}
@@ -323,6 +313,15 @@ export function Board({ data }: { data: BoardData }) {
           </div>
         </Droppable>
       </div>
+
+      {day.status === "active" && (
+        <div className="sticky bottom-0 z-10 flex items-center gap-2 border-t border-slate-200 bg-slate-50/90 px-4 py-2 backdrop-blur">
+          <ActivityLog dayId={day.id} />
+          {pending && <span className="text-xs text-slate-400">saving…</span>}
+          <div className="flex-1" />
+          <EndDayButton dayId={day.id} />
+        </div>
+      )}
     </DndContext>
   );
 }

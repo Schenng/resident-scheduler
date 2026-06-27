@@ -178,17 +178,23 @@ async function maybeLog(
   // Only log once the day is active. Draft setup is silent.
   if (dayStatus !== "active") return;
 
-  // Resolve the destination room id → label. Removing a person from the board
-  // is recorded as "Unassigned"; otherwise it's the target room (or pool).
-  let destination = "Unassigned";
-  if (entry.action !== "remove" && entry.toRoom) {
+  // Resolve a room id → label, treating null (the pool) as "Unassigned".
+  async function roomLabel(roomId: string | null): Promise<string> {
+    if (!roomId) return "Unassigned";
     const { data: room } = await supabase
       .from("rooms")
       .select("label")
-      .eq("id", entry.toRoom)
+      .eq("id", roomId)
       .maybeSingle();
-    destination = room?.label ?? "Unassigned";
+    return room?.label ?? "Unassigned";
   }
+
+  // Destination: removing a person is recorded as "Unassigned"; otherwise it's
+  // the target room (or the pool).
+  const destination = entry.action === "remove" ? "Unassigned" : await roomLabel(entry.toRoom);
+
+  // Origin: where the person came from. A freshly added person has no origin.
+  const origin = entry.action === "add" ? null : await roomLabel(entry.fromRoom);
 
   // A failed log write must never undo or block the move that already saved.
   try {
@@ -197,7 +203,7 @@ async function maybeLog(
       action_type: entry.action,
       person_name: entry.personName,
       person_type: entry.personType,
-      from_room: null,
+      from_room: origin,
       to_room: destination,
     });
   } catch (e) {

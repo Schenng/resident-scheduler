@@ -3,74 +3,136 @@
 import { useState } from "react";
 import type { PersonType } from "@/types";
 
-/** Inline "+ add" control inside a room for typing an attending or CRNA name. */
+interface ResidentOption {
+  id: string;
+  name: string;
+}
+
+/** "+ add" control inside a room. Opens a pop-up to add an attending, CRNA, or resident. */
 export function AddPersonInline({
+  residents,
   onAdd,
 }: {
-  onAdd: (name: string, type: PersonType) => void;
+  residents: ResidentOption[];
+  onAdd: (input: { type: PersonType; name: string; residentId?: string }) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
   const [type, setType] = useState<PersonType>("attending");
+  const [name, setName] = useState("");
+  const [residentId, setResidentId] = useState("");
 
-  function submit() {
-    if (!name.trim()) return;
-    onAdd(name.trim(), type);
-    setName("");
+  function close() {
     setOpen(false);
+    setType("attending");
+    setName("");
+    setResidentId("");
   }
 
-  if (!open) {
-    return (
+  const canAdd = type === "resident" ? residentId !== "" : name.trim() !== "";
+
+  function submit() {
+    if (!canAdd) return;
+    if (type === "resident") {
+      const r = residents.find((x) => x.id === residentId);
+      if (!r) return;
+      onAdd({ type: "resident", name: r.name, residentId: r.id });
+    } else {
+      onAdd({ type, name: name.trim() });
+    }
+    close();
+  }
+
+  return (
+    <>
       <button
         onClick={(e) => {
           e.stopPropagation();
           setOpen(true);
         }}
-        className="rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-sm text-slate-400 hover:border-slate-400 hover:text-slate-600"
+        className="rounded-full border border-dashed border-slate-300 px-2 py-0.5 text-xs text-slate-400 hover:border-slate-400 hover:text-slate-600"
       >
         + add
       </button>
-    );
-  }
 
-  return (
-    <span
-      onClick={(e) => e.stopPropagation()}
-      className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-1.5 py-0.5"
-    >
-      <select
-        value={type}
-        onChange={(e) => setType(e.target.value as PersonType)}
-        className="bg-transparent text-xs text-slate-600 outline-none"
-      >
-        <option value="attending">Attending</option>
-        <option value="crna">CRNA</option>
-      </select>
-      <input
-        autoFocus
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") submit();
-          if (e.key === "Escape") setOpen(false);
-        }}
-        placeholder="Name"
-        className="w-24 text-sm outline-none"
-      />
-      <button onClick={submit} className="text-sm text-green-600 hover:text-green-800" aria-label="Add">
-        ✓
-      </button>
-      <button
-        onClick={() => {
-          setOpen(false);
-          setName("");
-        }}
-        className="text-sm text-slate-400 hover:text-slate-600"
-        aria-label="Cancel"
-      >
-        ✕
-      </button>
-    </span>
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onClick={(e) => {
+            e.stopPropagation();
+            close();
+          }}
+        >
+          <div
+            className="w-full max-w-xs space-y-4 rounded-xl bg-white p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-sm font-semibold text-slate-900">Add person</h2>
+
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {(["attending", "crna", "resident"] as const).map((t) => (
+                <label key={t} className="flex items-center gap-1.5 text-sm text-slate-700">
+                  <input
+                    type="radio"
+                    name="person-type"
+                    value={t}
+                    checked={type === t}
+                    onChange={() => setType(t)}
+                  />
+                  {t === "crna" ? "CRNA" : t.charAt(0).toUpperCase() + t.slice(1)}
+                </label>
+              ))}
+            </div>
+
+            {type === "resident" ? (
+              residents.length === 0 ? (
+                <p className="text-sm text-slate-400">No available residents.</p>
+              ) : (
+                <select
+                  autoFocus
+                  value={residentId}
+                  onChange={(e) => setResidentId(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+                >
+                  <option value="">Select a resident…</option>
+                  {residents.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              )
+            ) : (
+              <input
+                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submit();
+                  if (e.key === "Escape") close();
+                }}
+                placeholder="Name"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+              />
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={submit}
+                disabled={!canAdd}
+                className="flex-1 rounded-lg bg-slate-800 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
+              >
+                Add
+              </button>
+              <button
+                onClick={close}
+                className="rounded-lg px-4 py-2 text-sm text-slate-500 hover:text-slate-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

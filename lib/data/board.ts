@@ -34,7 +34,12 @@ export async function loadBoard(day: ScheduleDay): Promise<BoardData> {
   ] = await Promise.all([
     supabase.from("rooms").select("*").order("section").order("sort_order"),
     supabase.from("schedule_slots").select("*").eq("day_id", day.id).order("position"),
-    supabase.from("residents").select("*").eq("active", true).order("name"),
+    supabase
+      .from("residents")
+      .select("*")
+      .eq("active", true)
+      .order("last_name")
+      .order("first_name"),
     supabase.from("resident_availability").select("resident_id, date"),
     supabase.from("resident_24hr").select("resident_id, date"),
   ]);

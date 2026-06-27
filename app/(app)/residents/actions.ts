@@ -6,24 +6,35 @@ import type { AvailabilityType } from "@/types";
 
 // ---------- Roster ----------------------------------------------------------
 
-export async function createResident(name: string, level: string | null) {
+export async function createResident(
+  firstName: string,
+  lastName: string,
+  level: string | null
+) {
   const supabase = createClient();
-  const { error } = await supabase
-    .from("residents")
-    .insert({ name: name.trim(), level: level?.trim() || null });
+  const { error } = await supabase.from("residents").insert({
+    first_name: firstName.trim(),
+    last_name: lastName.trim(),
+    level: level?.trim() || null,
+  });
   if (error) throw new Error(error.message);
   revalidatePath("/residents");
 }
 
 export async function updateResident(
   id: string,
-  name: string,
+  firstName: string,
+  lastName: string,
   level: string | null
 ) {
   const supabase = createClient();
   const { error } = await supabase
     .from("residents")
-    .update({ name: name.trim(), level: level?.trim() || null })
+    .update({
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
+      level: level?.trim() || null,
+    })
     .eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/residents");

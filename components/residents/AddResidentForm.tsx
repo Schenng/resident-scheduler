@@ -4,19 +4,23 @@ import { useState, useTransition } from "react";
 import { createResident } from "@/app/(app)/residents/actions";
 
 export function AddResidentForm() {
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [level, setLevel] = useState("");
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  const valid = firstName.trim() !== "" && lastName.trim() !== "";
+
   function submit() {
-    if (!name.trim()) return;
+    if (!valid) return;
     setError(null);
     startTransition(async () => {
       try {
-        await createResident(name, level);
-        setName("");
+        await createResident(firstName, lastName, level);
+        setFirstName("");
+        setLastName("");
         setLevel("");
         setOpen(false);
       } catch (e) {
@@ -40,9 +44,15 @@ export function AddResidentForm() {
     <div className="space-y-3 rounded-xl bg-white p-4 shadow-sm">
       <input
         autoFocus
-        placeholder="Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
+        placeholder="First name"
+        value={firstName}
+        onChange={(e) => setFirstName(e.target.value)}
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+      />
+      <input
+        placeholder="Last name"
+        value={lastName}
+        onChange={(e) => setLastName(e.target.value)}
         className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
       />
       <input
@@ -55,7 +65,7 @@ export function AddResidentForm() {
       <div className="flex gap-2">
         <button
           onClick={submit}
-          disabled={pending || !name.trim()}
+          disabled={pending || !valid}
           className="flex-1 rounded-lg bg-slate-800 py-2 font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
         >
           {pending ? "Adding…" : "Add"}

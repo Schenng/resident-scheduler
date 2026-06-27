@@ -116,6 +116,12 @@ export default async function ArchivedDayPage({ params }: { params: { id: string
                     <span className="shrink-0 text-slate-400">{formatTime(e.timestamp)}</span>
                     <span>
                       <span className="font-medium text-slate-900">{e.person_name}</span>
+                      {e.from_room && (
+                        <>
+                          <span className="text-slate-400"> · </span>
+                          <span className="text-slate-600">{e.from_room}</span>
+                        </>
+                      )}
                       <span className="text-slate-400"> → </span>
                       <span className="text-slate-600">{e.to_room}</span>
                     </span>

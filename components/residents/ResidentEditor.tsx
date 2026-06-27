@@ -3,18 +3,22 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateResident, setResidentActive } from "@/app/(app)/residents/actions";
-import type { Resident } from "@/types";
+import { residentFullName, type Resident } from "@/types";
 
 export function ResidentEditor({ resident }: { resident: Resident }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(resident.name);
+  const [firstName, setFirstName] = useState(resident.first_name);
+  const [lastName, setLastName] = useState(resident.last_name);
   const [level, setLevel] = useState(resident.level ?? "");
   const [pending, startTransition] = useTransition();
 
+  const valid = firstName.trim() !== "" && lastName.trim() !== "";
+
   function save() {
+    if (!valid) return;
     startTransition(async () => {
-      await updateResident(resident.id, name, level);
+      await updateResident(resident.id, firstName, lastName, level);
       setEditing(false);
     });
   }
@@ -31,7 +35,7 @@ export function ResidentEditor({ resident }: { resident: Resident }) {
     return (
       <div className="flex items-center justify-between rounded-xl bg-white p-4 shadow-sm">
         <div>
-          <p className="font-semibold text-slate-900">{resident.name}</p>
+          <p className="font-semibold text-slate-900">{residentFullName(resident)}</p>
           <p className="text-sm text-slate-500">
             {resident.level ?? "No level set"}
             {!resident.active && " · inactive"}
@@ -59,8 +63,15 @@ export function ResidentEditor({ resident }: { resident: Resident }) {
   return (
     <div className="space-y-3 rounded-xl bg-white p-4 shadow-sm">
       <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
+        value={firstName}
+        onChange={(e) => setFirstName(e.target.value)}
+        placeholder="First name"
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+      />
+      <input
+        value={lastName}
+        onChange={(e) => setLastName(e.target.value)}
+        placeholder="Last name"
         className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
       />
       <input
@@ -72,7 +83,7 @@ export function ResidentEditor({ resident }: { resident: Resident }) {
       <div className="flex gap-2">
         <button
           onClick={save}
-          disabled={pending || !name.trim()}
+          disabled={pending || !valid}
           className="flex-1 rounded-lg bg-slate-800 py-2 font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
         >
           {pending ? "Saving…" : "Save"}
@@ -80,7 +91,8 @@ export function ResidentEditor({ resident }: { resident: Resident }) {
         <button
           onClick={() => {
             setEditing(false);
-            setName(resident.name);
+            setFirstName(resident.first_name);
+            setLastName(resident.last_name);
             setLevel(resident.level ?? "");
           }}
           className="rounded-lg px-4 py-2 text-slate-500 hover:text-slate-700"

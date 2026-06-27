@@ -8,13 +8,14 @@ import { ShiftCalendar } from "@/components/residents/ShiftCalendar";
 import { RotationList } from "@/components/residents/RotationList";
 import { AssignmentHistory } from "@/components/residents/AssignmentHistory";
 import { findStatusConflicts } from "@/lib/utils/status";
-import type {
-  Resident,
-  ResidentAvailability,
-  Resident24hr,
-  ResidentRotation,
-  ScheduleSlot,
-  ScheduleDay,
+import {
+  residentFullName,
+  type Resident,
+  type ResidentAvailability,
+  type Resident24hr,
+  type ResidentRotation,
+  type ScheduleSlot,
+  type ScheduleDay,
 } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -92,7 +93,7 @@ export default async function ResidentDetailPage({
 
   return (
     <>
-      <AppHeader title={r.name} subtitle={r.level ?? undefined} />
+      <AppHeader title={residentFullName(r)} subtitle={r.level ?? undefined} />
 
       <div className="space-y-6 p-4">
         <Link href="/residents" className="text-sm text-slate-500 hover:text-slate-700">

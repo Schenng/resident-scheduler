@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/ui/AppHeader";
 import { AddResidentForm } from "@/components/residents/AddResidentForm";
-import type { Resident } from "@/types";
+import { residentFullName, type Resident } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,8 @@ export default async function ResidentsPage() {
     .from("residents")
     .select("*")
     .order("active", { ascending: false })
-    .order("name", { ascending: true });
+    .order("last_name", { ascending: true })
+    .order("first_name", { ascending: true });
 
   const residents = (data ?? []) as Resident[];
   const activeResidents = residents.filter((r) => r.active);
@@ -41,7 +42,7 @@ export default async function ResidentsPage() {
                     href={`/residents/${r.id}`}
                     className="flex items-center justify-between px-4 py-3 transition hover:bg-slate-50"
                   >
-                    <span className="font-medium text-slate-900">{r.name}</span>
+                    <span className="font-medium text-slate-900">{residentFullName(r)}</span>
                     <span className="flex items-center gap-2">
                       {r.level && (
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
@@ -69,7 +70,7 @@ export default async function ResidentsPage() {
                     href={`/residents/${r.id}`}
                     className="flex items-center justify-between px-4 py-3 text-slate-400 transition hover:bg-slate-50"
                   >
-                    <span className="font-medium">{r.name}</span>
+                    <span className="font-medium">{residentFullName(r)}</span>
                     <span className="text-xs">inactive</span>
                   </Link>
                 </li>

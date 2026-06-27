@@ -34,6 +34,4 @@ insert into public.rooms (label, section, sort_order) values
   ('NITV',    'special', 3),
   ('TEE',     'special', 4),
   ('CT',      'special', 5),
-  ('CATH',    'special', 6),
-  -- Free Doctors (virtual holding area)
-  ('Free Doctors', 'free_doctors', 1);
+  ('CATH',    'special', 6);

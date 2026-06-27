@@ -38,7 +38,8 @@ create trigger on_auth_user_created
 -- ---------- residents ------------------------------------------------------
 create table public.residents (
   id         uuid primary key default gen_random_uuid(),
-  name       text not null,
+  first_name text not null,
+  last_name  text not null,
   level      text,
   active     boolean not null default true,
   created_at timestamptz not null default now()

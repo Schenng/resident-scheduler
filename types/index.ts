@@ -3,7 +3,7 @@
 // ============================================================================
 
 export type AvailabilityType = "vacation" | "sick" | "leave";
-export type RoomSection = "main_or" | "sds" | "endo" | "special" | "free_doctors";
+export type RoomSection = "main_or" | "sds" | "endo" | "special";
 export type DayStatus = "draft" | "active" | "archived";
 export type PersonType = "attending" | "resident" | "crna";
 export type ActionType = "move" | "add" | "remove" | "swap";
@@ -18,10 +18,21 @@ export interface AppUser {
 
 export interface Resident {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   level: string | null;
   active: boolean;
   created_at: string;
+}
+
+/** Display name for a resident: "Last, First". */
+export function residentFullName(r: {
+  first_name: string;
+  last_name: string;
+}): string {
+  if (!r.last_name) return r.first_name.trim();
+  if (!r.first_name) return r.last_name.trim();
+  return `${r.last_name}, ${r.first_name}`.trim();
 }
 
 export interface ResidentAvailability {
@@ -89,7 +100,6 @@ export const SECTION_ORDER: RoomSection[] = [
   "sds",
   "endo",
   "special",
-  "free_doctors",
 ];
 
 export const SECTION_LABELS: Record<RoomSection, string> = {
@@ -97,7 +107,6 @@ export const SECTION_LABELS: Record<RoomSection, string> = {
   sds: "SDS",
   endo: "Endo",
   special: "Special",
-  free_doctors: "Free Doctors",
 };
 
 // A resident with their derived status for the active day, used on the board.
