@@ -229,9 +229,10 @@ export function Board({ data }: { data: BoardData }) {
 
   const placing = selected !== null;
 
-  // Render the current schedule to a PNG and download it. Drawn from board data
-  // (not the DOM) so it works without any image-capture dependency.
-  function shareSchedule() {
+  // Render the current schedule to a PNG. Drawn from board data (not the DOM) so
+  // it works without any image-capture dependency. On mobile this opens the
+  // native share sheet (WhatsApp, iMessage, …); elsewhere it downloads the image.
+  async function shareSchedule() {
     const width = 760;
     const scale = 2;
     const padX = 28;
@@ -334,15 +335,33 @@ export function Board({ data }: { data: BoardData }) {
     ctx.fillRect(0, 0, width, height);
     layout(ctx, true);
 
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `schedule-${day.date}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }, "image/png");
+    // Build the file synchronously so iOS Safari keeps the tap's user-activation.
+    const dataUrl = canvas.toDataURL("image/png");
+    const filename = `schedule-${day.date}.png`;
+    const binary = atob(dataUrl.split(",")[1]);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const file = new File([bytes], filename, { type: "image/png" });
+
+    // Prefer the native share sheet when it can share files (mobile).
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: "OR Schedule",
+          text: `OR Schedule — ${formatLong(day.date)}`,
+        });
+      } catch {
+        // User dismissed the share sheet, or sharing failed — nothing to do.
+      }
+      return;
+    }
+
+    // Fallback: download the image.
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = filename;
+    a.click();
   }
 
   function renderSection(section: RoomSection, roomsClassName = "grid-cols-1") {
