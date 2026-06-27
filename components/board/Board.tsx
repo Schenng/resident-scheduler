@@ -411,7 +411,7 @@ export function Board({ data }: { data: BoardData }) {
         </div>
       )}
 
-      <div className="space-y-3 p-3 pb-24">
+      <div className="space-y-3 p-3">
         {/* Left column: Main OR. Right column: SDS over Endo. */}
         <div className="grid grid-cols-2 gap-3">
           <div>{renderSection("main_or")}</div>
@@ -472,7 +472,7 @@ export function Board({ data }: { data: BoardData }) {
           </div>
         )}
 
-        {/* Recent Log — the last five changes; tap to open the full day log. */}
+        {/* Recent Activity — the last five changes; tap to open the activity log. */}
         {recentLog.length > 0 && (
           <Link
             href={`/schedule/log/${day.id}`}
@@ -480,7 +480,7 @@ export function Board({ data }: { data: BoardData }) {
           >
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Recent Log
+                Recent Activity
               </span>
               <span className="text-slate-300">›</span>
             </div>
@@ -513,7 +513,7 @@ export function Board({ data }: { data: BoardData }) {
           <div className="flex-1" />
           <button
             onClick={shareSchedule}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
           >
             Share
           </button>

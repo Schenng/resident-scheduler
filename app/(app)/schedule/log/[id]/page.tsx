@@ -31,7 +31,7 @@ export default async function DayLogPage({ params }: { params: { id: string } })
   return (
     <>
       <AppHeader
-        title="Day Log"
+        title="Activity Log"
         subtitle={formatLong(day.date)}
         badge={<StatusBadge status={day.status} />}
       />

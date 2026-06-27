@@ -57,7 +57,7 @@ Draft → [Start Day] → Active → [End Day] → Archived
 - Records `started_at` timestamp on `schedule_days`
 - Every subsequent change is timestamped and appended to the activity log
 - Chief can still move anyone freely: attendings, residents, CRNAs
-- A "Day Log" panel is accessible showing all changes since start
+- An "Activity Log" page is accessible showing all changes since start
 - An "End Day" button is visible
 
 #### End Day
